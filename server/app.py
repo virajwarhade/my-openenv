@@ -5,6 +5,7 @@ import sys
 import os
 from models import Action, ResetRequest
 from fastapi.responses import HTMLResponse
+from typing import Optional
 
 # Fix imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -25,6 +26,7 @@ class Action(BaseModel):
     action: int
 
 @app.get("/web", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 def home():
     return """
     <html>
@@ -174,11 +176,18 @@ def home():
     """
 
 @app.post("/reset")
-def reset(req: ResetRequest):
+def reset(req: Optional[ResetRequest] = None):
     global env
-    config = get_task_config(req.task)
+
+    task = "medium"  # default
+
+    if req and req.task:
+        task = req.task
+
+    config = get_task_config(task)
     env = TrafficEnv(config=config)
     state = env.reset()
+
     return {"state": state.tolist()}
 
 
