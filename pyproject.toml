@@ -1,0 +1,23 @@
+[project]
+name = "traffic-openenv"
+version = "0.1.0"
+description = "Autonomous traffic control OpenEnv environment"
+authors = [
+    {name = "Viraj Warhade"}
+]
+
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "numpy",
+    "requests",
+    "openai",
+    "openenv-core>=0.2.0"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

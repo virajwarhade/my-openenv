@@ -1,0 +1,25 @@
+name: traffic-control-env
+description: Autonomous traffic control system with emergency prioritization
+
+entrypoint: app:app
+
+tasks:
+  - name: easy
+    description: Low traffic, rare emergency
+
+  - name: medium
+    description: Moderate traffic, occasional emergency
+
+  - name: hard
+    description: Heavy traffic, frequent emergency
+
+observation_space:
+  type: array
+  items:
+    type: number
+  description: [north, south, east, west, en, es, ee, ew]
+
+action_space:
+  type: integer
+  enum: [0, 1]
+  description: 0 = NS green, 1 = EW green
