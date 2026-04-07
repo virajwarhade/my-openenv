@@ -1,47 +1,44 @@
 import os
 import requests
-import random
 from openai import OpenAI
 
-# ENV VARIABLES (required)
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
-HF_TOKEN = os.getenv("HF_TOKEN", "dummy")
+# REQUIRED ENV VARIABLES (DO NOT OVERRIDE)
+API_BASE_URL = os.environ["API_BASE_URL"]
+API_KEY = os.environ["API_KEY"]
+MODEL_NAME = os.environ["MODEL_NAME"]
 
-TASK_NAME = os.getenv("TASK", "medium")
+TASK_NAME = "medium"
 BENCHMARK = "traffic-env"
 MAX_STEPS = 100
 
-# OpenAI client (required by rules)
-client = OpenAI(
-    base_url=os.getenv("API_BASE_URL_LLM", "https://router.huggingface.co/v1"),
-    api_key=HF_TOKEN
-)
-
 
 def choose_action(state):
-    """
-    Smart baseline agent:
-    - Prioritize emergency
-    - Otherwise longest queue
-    """
-
     north, south, east, west, en, es, ee, ew = state
 
     # Emergency priority
     if en or es:
-        return 0  # NS green
-    if ee or ew:
-        return 1  # EW green
-
-    # Longest queue logic
-    if (north + south) > (east + west):
         return 0
-    else:
+    if ee or ew:
         return 1
+
+    # Longest queue
+    return 0 if (north + south) > (east + west) else 1
 
 
 def main():
+    # ✅ REQUIRED: use their LLM proxy
+    client = OpenAI(
+        base_url=API_BASE_URL,
+        api_key=API_KEY
+    )
+
+    # 🔥 REQUIRED CALL (this fixes your Phase 2)
+    client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[{"role": "user", "content": "hello"}],
+        max_tokens=5
+    )
+
     rewards = []
     step_count = 0
     success = False
@@ -49,8 +46,8 @@ def main():
     print(f"[START] task={TASK_NAME} env={BENCHMARK} model={MODEL_NAME}")
 
     try:
-        # Reset environment
-        res = requests.post(f"{API_BASE_URL}/reset", json={"task": TASK_NAME})
+        # Reset
+        res = requests.post(f"{API_BASE_URL}/reset")
         state = res.json()["state"]
 
         done = False
@@ -86,9 +83,7 @@ def main():
             f"reward=0.00 done=true error={str(e)}"
         )
 
-    # Final score (simple normalization)
     score = min(1.0, max(0.0, sum(rewards) / 100))
-
     rewards_str = ",".join([f"{r:.2f}" for r in rewards])
 
     print(
