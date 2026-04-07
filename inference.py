@@ -2,15 +2,26 @@ import os
 import requests
 from openai import OpenAI
 
-# REQUIRED ENV VARIABLES (DO NOT OVERRIDE)
+# =========================
+# REQUIRED ENV VARIABLES
+# =========================
+
+# 🔥 LLM proxy (MANDATORY)
 API_BASE_URL = os.environ["API_BASE_URL"]
 API_KEY = os.environ["API_KEY"]
 MODEL_NAME = os.environ["MODEL_NAME"]
+
+# 🔥 YOUR ENV API (LOCAL or HF)
+ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://127.0.0.1:8000")
 
 TASK_NAME = "medium"
 BENCHMARK = "traffic-env"
 MAX_STEPS = 100
 
+
+# =========================
+# AGENT LOGIC
+# =========================
 
 def choose_action(state):
     north, south, east, west, en, es, ee, ew = state
@@ -25,14 +36,18 @@ def choose_action(state):
     return 0 if (north + south) > (east + west) else 1
 
 
+# =========================
+# MAIN EXECUTION
+# =========================
+
 def main():
-    # ✅ REQUIRED: use their LLM proxy
+    # ✅ MUST use LLM proxy
     client = OpenAI(
         base_url=API_BASE_URL,
         api_key=API_KEY
     )
 
-    # 🔥 REQUIRED CALL (this fixes your Phase 2)
+    # 🔥 REQUIRED LLM CALL (for Phase 2)
     client.chat.completions.create(
         model=MODEL_NAME,
         messages=[{"role": "user", "content": "hello"}],
@@ -46,19 +61,24 @@ def main():
     print(f"[START] task={TASK_NAME} env={BENCHMARK} model={MODEL_NAME}")
 
     try:
-        # Reset
-        res = requests.post(f"{API_BASE_URL}/reset")
+        # =========================
+        # RESET ENV
+        # =========================
+        res = requests.post(f"{ENV_BASE_URL}/reset")
         state = res.json()["state"]
 
         done = False
 
+        # =========================
+        # RUN LOOP
+        # =========================
         while not done and step_count < MAX_STEPS:
             step_count += 1
 
             action = choose_action(state)
 
             res = requests.post(
-                f"{API_BASE_URL}/step",
+                f"{ENV_BASE_URL}/step",
                 json={"action": action}
             )
 
@@ -83,6 +103,9 @@ def main():
             f"reward=0.00 done=true error={str(e)}"
         )
 
+    # =========================
+    # FINAL OUTPUT
+    # =========================
     score = min(1.0, max(0.0, sum(rewards) / 100))
     rewards_str = ",".join([f"{r:.2f}" for r in rewards])
 
